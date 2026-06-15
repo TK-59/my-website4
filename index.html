@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Clock v3.2</title>
+
+<style>
+html,body{
+margin:0;
+padding:0;
+height:100%;
+overflow:hidden;
+color:#fff;
+background: radial-gradient(circle at top, #1a1f2e 0%, #000 60%);
+linear-gradient(to bottom, rgba(255,255,255,0.03), transparent);
+font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","SF Pro Display","Helvetica Neue",sans-serif;
+}
+
+.wrap{
+height:100vh; 
+display:flex;
+flex-direction:column;
+justify-content:space-between;
+padding:12px;
+box-sizing:border-box;
+}
+
+.panel{
+background:rgba(255,255,255,0.06);
+border:1px solid rgba(255,255,255,0.14);
+border-radius:24px;
+padding:12px;
+backdrop-filter:blur(16px);
+}
+
+/* ★ 駅名＋天気を横並び */
+.top{
+display:flex;
+align-items:center;
+font-size:20px;
+font-weight:500;
+}
+
+.current{
+font-size:18px;
+opacity:0.95;
+margin-left:10px;
+font-weight:400;
+}
+
+.scroll{
+display:flex;
+gap:8px;
+overflow-x:auto;
+margin-top:8px;
+scrollbar-width:none;
+}
+
+.scroll::-webkit-scrollbar{
+display:none;
+}
+
+.card{
+min-width:80px;
+text-align:center;
+padding:8px;
+border-radius:14px;
+background:rgba(255,255,255,0.04);
+border:1px solid rgba(255,255,255,0.08);
+font-size:14px;
+}
+
+.center{
+flex:1;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+}
+
+#clock{
+font-size:min(18vw,120px);
+font-weight:400;
+
+font-variant-numeric:tabular-nums;
+font-feature-settings:"tnum";
+
+letter-spacing:1px;
+text-align:center;
+}
+
+#date{
+margin-top:10px;
+font-size:24px;
+text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrap">
+
+<!-- 踊場 -->
+<div class="panel">
+  <div class="top">
+    <div>
+      踊場
+      <span class="current" id="odCurrent">--</span>
+    </div>
+  </div>
+  <div class="scroll" id="odForecast"></div>
+</div>
+
+<!-- 時計 -->
+<div class="center">
+  <div id="clock">--:--:--</div>
+  <div id="date">----</div>
+</div>
+
+<!-- 赤坂見附 -->
+<div class="panel">
+  <div class="top">
+    <div>
+      赤坂見附
+      <span class="current" id="akCurrent">--</span>
+    </div>
+  </div>
+  <div class="scroll" id="akForecast"></div>
+</div>
+
+</div>
+
+<script>
+
+const days=["日","月","火","水","木","金","土"];
+
+/* 時計 */
+function tick(){
+const n=new Date();
+const p=x=>String(x).padStart(2,"0");
+
+document.getElementById("clock").textContent=
+`${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+
+document.getElementById("date").textContent=
+`${n.getFullYear()}年${n.getMonth()+1}月${n.getDate()}日（${days[n.getDay()]}）`;
+}
+
+setInterval(tick,1000);
+tick();
+
+/* アイコン */
+function icon(code,precip){
+
+if(precip >= 0.1) return "🌧️";
+
+if(code===0) return "☀️";
+if([1,2].includes(code)) return "🌤️";
+if(code===3) return "☁️";
+if([45,48].includes(code)) return "🌫️";
+if([51,53,55].includes(code)) return "🌦️";
+if([61,63,65,80,81,82].includes(code)) return "🌧️";
+if([95,96,99].includes(code)) return "⛈️";
+
+return "☁️";
+}
+
+/* 雨補正 */
+function adjustRain(prevRain,prob,precip){
+
+let p=prob;
+
+if(prevRain) p+=20;
+
+if(precip>0.1) p+=30;
+
+return Math.min(100,p);
+}
+
+/* 時間表示（0削除） */
+function formatHour(h){
+return parseInt(h,10)+"時";
+}
+
+/* 天気取得 */
+async function load(lat,lon,currentId,forecastId){
+
+const url=
+`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weather_code,precipitation,precipitation_probability&forecast_days=2&timezone=Asia%2FTokyo`;
+
+const res=await fetch(url);
+const d=await res.json();
+
+const now=new Date();
+
+const h0=d.hourly;
+
+let nowIndex=0;
+
+for(let i=0;i<h0.time.length;i++){
+if(new Date(h0.time[i])>=now){
+nowIndex=i;
+break;
+}
+}
+
+/* 現在 */
+const cCode=h0.weather_code[nowIndex];
+const cPrecip=h0.precipitation[nowIndex];
+
+document.getElementById(currentId).textContent=
+`${icon(cCode,cPrecip)} ${Math.round(h0.temperature_2m[nowIndex])}℃`;
+
+/* 予報 */
+const box=document.getElementById(forecastId);
+box.innerHTML="";
+
+let prevRain=false;
+
+for(let i=nowIndex;i<nowIndex+24;i++){
+
+const code=h0.weather_code[i];
+const temp=Math.round(h0.temperature_2m[i]);
+const precip=h0.precipitation[i];
+
+let prob=h0.precipitation_probability[i] || 0;
+
+prob=adjustRain(prevRain,prob,precip);
+
+prevRain=(precip>0.1 || prob>60);
+
+const div=document.createElement("div");
+div.className="card";
+
+div.innerHTML=`
+<div>${formatHour(new Date(h0.time[i]).getHours())}</div>
+<div>${icon(code,precip)}</div>
+<div>${temp}℃</div>
+<div>☔${Math.round(prob)}%</div>
+`;
+
+box.appendChild(div);
+}
+}
+
+/* 実行 */
+load(35.401,139.517,"odCurrent","odForecast");
+load(35.676,139.737,"akCurrent","akForecast");
+
+setInterval(()=>{
+load(35.401,139.517,"odCurrent","odForecast");
+load(35.676,139.737,"akCurrent","akForecast");
+},300000);
+
+</script>
+
+</body>
+</html>
