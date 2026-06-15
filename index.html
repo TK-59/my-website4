@@ -2,8 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Weather Clock v3.3</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Clock v3.2</title>
 
 <style>
 html,body{
@@ -12,24 +12,13 @@ padding:0;
 height:100%;
 overflow:hidden;
 color:#fff;
-
-/* ★ 修正済みグラデ */
-background:
-radial-gradient(circle at top, #1a1f2e 0%, #000 60%),
+background: radial-gradient(circle at top, #1a1f2e 0%, #000 60%);
 linear-gradient(to bottom, rgba(255,255,255,0.03), transparent);
-
-font-family:
--apple-system,
-BlinkMacSystemFont,
-"SF Pro Rounded",
-"SF Pro Display",
-"Helvetica Neue",
-sans-serif;
+font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","SF Pro Display","Helvetica Neue",sans-serif;
 }
 
-/* ★ iPhone安全対策 */
 .wrap{
-height:100dvh;
+height:100vh; 
 display:flex;
 flex-direction:column;
 justify-content:space-between;
@@ -45,7 +34,7 @@ padding:12px;
 backdrop-filter:blur(16px);
 }
 
-/* 駅名＋現在 */
+/* ★ 駅名＋天気を横並び */
 .top{
 display:flex;
 align-items:center;
@@ -60,7 +49,6 @@ margin-left:10px;
 font-weight:400;
 }
 
-/* 横スクロール */
 .scroll{
 display:flex;
 gap:8px;
@@ -68,7 +56,10 @@ overflow-x:auto;
 margin-top:8px;
 scrollbar-width:none;
 }
-.scroll::-webkit-scrollbar{display:none;}
+
+.scroll::-webkit-scrollbar{
+display:none;
+}
 
 .card{
 min-width:80px;
@@ -80,7 +71,6 @@ border:1px solid rgba(255,255,255,0.08);
 font-size:14px;
 }
 
-/* 中央時計 */
 .center{
 flex:1;
 display:flex;
@@ -89,9 +79,8 @@ justify-content:center;
 align-items:center;
 }
 
-/* ★ iPhone最適化 */
 #clock{
-font-size:min(16vw,90px);
+font-size:min(18vw,120px);
 font-weight:400;
 
 font-variant-numeric:tabular-nums;
@@ -103,10 +92,9 @@ text-align:center;
 
 #date{
 margin-top:10px;
-font-size:22px;
+font-size:24px;
 text-align:center;
 }
-
 </style>
 </head>
 
@@ -117,7 +105,10 @@ text-align:center;
 <!-- 踊場 -->
 <div class="panel">
   <div class="top">
-    <div>踊場 <span class="current" id="odCurrent">--</span></div>
+    <div>
+      踊場
+      <span class="current" id="odCurrent">--</span>
+    </div>
   </div>
   <div class="scroll" id="odForecast"></div>
 </div>
@@ -131,9 +122,14 @@ text-align:center;
 <!-- 赤坂見附 -->
 <div class="panel">
   <div class="top">
-    <div>赤坂見附 <span class="current" id="akCurrent">--</span></div>
+    <div>
+      赤坂見附
+      <span class="current" id="akCurrent">--</span>
+    </div>
   </div>
   <div class="scroll" id="akForecast"></div>
+</div>
+
 </div>
 
 <script>
@@ -151,12 +147,15 @@ document.getElementById("clock").textContent=
 document.getElementById("date").textContent=
 `${n.getFullYear()}年${n.getMonth()+1}月${n.getDate()}日（${days[n.getDay()]}）`;
 }
+
 setInterval(tick,1000);
 tick();
 
 /* アイコン */
 function icon(code,precip){
-if(precip>=0.1) return "🌧️";
+
+if(precip >= 0.1) return "🌧️";
+
 if(code===0) return "☀️";
 if([1,2].includes(code)) return "🌤️";
 if(code===3) return "☁️";
@@ -164,23 +163,28 @@ if([45,48].includes(code)) return "🌫️";
 if([51,53,55].includes(code)) return "🌦️";
 if([61,63,65,80,81,82].includes(code)) return "🌧️";
 if([95,96,99].includes(code)) return "⛈️";
+
 return "☁️";
 }
 
 /* 雨補正 */
 function adjustRain(prevRain,prob,precip){
+
 let p=prob;
+
 if(prevRain) p+=20;
+
 if(precip>0.1) p+=30;
+
 return Math.min(100,p);
 }
 
-/* 時間 */
+/* 時間表示（0削除） */
 function formatHour(h){
 return parseInt(h,10)+"時";
 }
 
-/* 天気 */
+/* 天気取得 */
 async function load(lat,lon,currentId,forecastId){
 
 const url=
@@ -190,9 +194,11 @@ const res=await fetch(url);
 const d=await res.json();
 
 const now=new Date();
+
 const h0=d.hourly;
 
 let nowIndex=0;
+
 for(let i=0;i<h0.time.length;i++){
 if(new Date(h0.time[i])>=now){
 nowIndex=i;
@@ -218,10 +224,12 @@ for(let i=nowIndex;i<nowIndex+24;i++){
 const code=h0.weather_code[i];
 const temp=Math.round(h0.temperature_2m[i]);
 const precip=h0.precipitation[i];
-let prob=h0.precipitation_probability[i]||0;
+
+let prob=h0.precipitation_probability[i] || 0;
 
 prob=adjustRain(prevRain,prob,precip);
-prevRain=(precip>0.1||prob>60);
+
+prevRain=(precip>0.1 || prob>60);
 
 const div=document.createElement("div");
 div.className="card";
