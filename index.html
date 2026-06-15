@@ -2,8 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Weather Clock v3.2</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Weather Clock v3.5</title>
 
 <style>
 html,body{
@@ -12,13 +12,20 @@ padding:0;
 height:100%;
 overflow:hidden;
 color:#fff;
+
+/* iPhone安定グラデ */
 background: radial-gradient(circle at top, #1a1f2e 0%, #000 60%);
-linear-gradient(to bottom, rgba(255,255,255,0.03), transparent);
-font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","SF Pro Display","Helvetica Neue",sans-serif;
+
+font-family:
+"SF Pro Rounded",
+-apple-system,
+BlinkMacSystemFont,
+"Helvetica Neue",
+sans-serif;
 }
 
 .wrap{
-height:100vh; 
+height:100dvh; /* ★iPhone対策 */
 display:flex;
 flex-direction:column;
 justify-content:space-between;
@@ -26,6 +33,7 @@ padding:12px;
 box-sizing:border-box;
 }
 
+/* 上下パネル */
 .panel{
 background:rgba(255,255,255,0.06);
 border:1px solid rgba(255,255,255,0.14);
@@ -34,19 +42,9 @@ padding:12px;
 backdrop-filter:blur(16px);
 }
 
-/* ★ 駅名＋天気を横並び */
 .top{
-display:flex;
-align-items:center;
 font-size:20px;
 font-weight:500;
-}
-
-.current{
-font-size:18px;
-opacity:0.95;
-margin-left:10px;
-font-weight:400;
 }
 
 .scroll{
@@ -56,10 +54,7 @@ overflow-x:auto;
 margin-top:8px;
 scrollbar-width:none;
 }
-
-.scroll::-webkit-scrollbar{
-display:none;
-}
+.scroll::-webkit-scrollbar{display:none;}
 
 .card{
 min-width:80px;
@@ -71,28 +66,55 @@ border:1px solid rgba(255,255,255,0.08);
 font-size:14px;
 }
 
+/* 中央 */
 .center{
 flex:1;
 display:flex;
+align-items:center;
+justify-content:space-between;
+padding:10px 0;
+}
+
+/* 左右天気 */
+.sideBlock{
+display:flex;
 flex-direction:column;
-justify-content:center;
+align-items:center;
+gap:6px;
+width:140px;
+}
+
+.cityName{
+font-size:15px;
+opacity:0.8;
+}
+
+.sideWeather{
+font-size:34px;
+font-weight:500;
+text-align:center;
+}
+
+/* 時計 */
+.clockBlock{
+display:flex;
+flex-direction:column;
 align-items:center;
 }
 
 #clock{
-font-size:min(18vw,120px);
+font-size:min(16vw,80px);
 font-weight:400;
 
 font-variant-numeric:tabular-nums;
 font-feature-settings:"tnum";
 
-letter-spacing:1px;
 text-align:center;
 }
 
 #date{
-margin-top:10px;
-font-size:24px;
+margin-top:8px;
+font-size:20px;
 text-align:center;
 }
 </style>
@@ -102,34 +124,36 @@ text-align:center;
 
 <div class="wrap">
 
-<!-- 踊場 -->
+<!-- 上 -->
 <div class="panel">
-  <div class="top">
-    <div>
-      踊場
-      <span class="current" id="odCurrent">--</span>
-    </div>
-  </div>
+  <div class="top">踊場</div>
   <div class="scroll" id="odForecast"></div>
 </div>
 
-<!-- 時計 -->
+<!-- 中央 -->
 <div class="center">
-  <div id="clock">--:--:--</div>
-  <div id="date">----</div>
-</div>
 
-<!-- 赤坂見附 -->
-<div class="panel">
-  <div class="top">
-    <div>
-      赤坂見附
-      <span class="current" id="akCurrent">--</span>
-    </div>
+  <div class="sideBlock">
+    <div class="cityName">踊場</div>
+    <div class="sideWeather" id="odCurrentBig">--</div>
   </div>
-  <div class="scroll" id="akForecast"></div>
+
+  <div class="clockBlock">
+    <div id="clock">--:--:--</div>
+    <div id="date">----</div>
+  </div>
+
+  <div class="sideBlock">
+    <div class="cityName">赤坂見附</div>
+    <div class="sideWeather" id="akCurrentBig">--</div>
+  </div>
+
 </div>
 
+<!-- 下 -->
+<div class="panel">
+  <div class="top">赤坂見附</div>
+  <div class="scroll" id="akForecast"></div>
 </div>
 
 <script>
@@ -147,15 +171,12 @@ document.getElementById("clock").textContent=
 document.getElementById("date").textContent=
 `${n.getFullYear()}年${n.getMonth()+1}月${n.getDate()}日（${days[n.getDay()]}）`;
 }
-
 setInterval(tick,1000);
 tick();
 
 /* アイコン */
 function icon(code,precip){
-
-if(precip >= 0.1) return "🌧️";
-
+if(precip>=0.1) return "🌧️";
 if(code===0) return "☀️";
 if([1,2].includes(code)) return "🌤️";
 if(code===3) return "☁️";
@@ -163,28 +184,10 @@ if([45,48].includes(code)) return "🌫️";
 if([51,53,55].includes(code)) return "🌦️";
 if([61,63,65,80,81,82].includes(code)) return "🌧️";
 if([95,96,99].includes(code)) return "⛈️";
-
 return "☁️";
 }
 
-/* 雨補正 */
-function adjustRain(prevRain,prob,precip){
-
-let p=prob;
-
-if(prevRain) p+=20;
-
-if(precip>0.1) p+=30;
-
-return Math.min(100,p);
-}
-
-/* 時間表示（0削除） */
-function formatHour(h){
-return parseInt(h,10)+"時";
-}
-
-/* 天気取得 */
+/* 天気 */
 async function load(lat,lon,currentId,forecastId){
 
 const url=
@@ -194,11 +197,9 @@ const res=await fetch(url);
 const d=await res.json();
 
 const now=new Date();
-
 const h0=d.hourly;
 
 let nowIndex=0;
-
 for(let i=0;i<h0.time.length;i++){
 if(new Date(h0.time[i])>=now){
 nowIndex=i;
@@ -208,34 +209,36 @@ break;
 
 /* 現在 */
 const cCode=h0.weather_code[nowIndex];
+const cTemp=Math.round(h0.temperature_2m[nowIndex]);
 const cPrecip=h0.precipitation[nowIndex];
 
-document.getElementById(currentId).textContent=
-`${icon(cCode,cPrecip)} ${Math.round(h0.temperature_2m[nowIndex])}℃`;
+const currentText=`${icon(cCode,cPrecip)} ${cTemp}℃`;
+
+document.getElementById(currentId).textContent=currentText;
+
+if(currentId==="odCurrent"){
+document.getElementById("odCurrentBig").textContent=currentText;
+}
+if(currentId==="akCurrent"){
+document.getElementById("akCurrentBig").textContent=currentText;
+}
 
 /* 予報 */
 const box=document.getElementById(forecastId);
 box.innerHTML="";
-
-let prevRain=false;
 
 for(let i=nowIndex;i<nowIndex+24;i++){
 
 const code=h0.weather_code[i];
 const temp=Math.round(h0.temperature_2m[i]);
 const precip=h0.precipitation[i];
-
-let prob=h0.precipitation_probability[i] || 0;
-
-prob=adjustRain(prevRain,prob,precip);
-
-prevRain=(precip>0.1 || prob>60);
+let prob=h0.precipitation_probability[i]||0;
 
 const div=document.createElement("div");
 div.className="card";
 
 div.innerHTML=`
-<div>${formatHour(new Date(h0.time[i]).getHours())}</div>
+<div>${new Date(h0.time[i]).getHours()}時</div>
 <div>${icon(code,precip)}</div>
 <div>${temp}℃</div>
 <div>☔${Math.round(prob)}%</div>
